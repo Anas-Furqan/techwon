@@ -106,7 +106,7 @@ export default function ContactForm() {
                 </div>
                 <div>
                   <p className="text-foreground-muted text-sm">Call Us</p>
-                  <p className="font-medium">+1 (555) 123-4567</p>
+                  <p className="font-medium">+92 329 2123655</p>
                 </div>
               </div>
             </div>
