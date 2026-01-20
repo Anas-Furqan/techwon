@@ -97,7 +97,7 @@ export default function ContactForm() {
                 </div>
                 <div>
                   <p className="text-foreground-muted text-sm">Email Us</p>
-                  <p className="font-medium">hello@techwon.com</p>
+                  <p className="font-medium">techwon@gmail.com</p>
                 </div>
               </div>
               <div className="glass-card p-4 flex items-center gap-4">
