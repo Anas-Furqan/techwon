@@ -1,7 +1,20 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Send, CheckCircle } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { Send, CheckCircle, Mail, Phone } from 'lucide-react';
 import { toast } from 'sonner';
+import MagneticButton from './animations/MagneticButton';
+
+gsap.registerPlugin(ScrollTrigger);
+
+/**
+ * ContactFormNew - Premium animated contact form
+ * Features:
+ * - Line-draw focus animation on inputs
+ * - Magnetic submit button
+ * - Staggered scroll reveal
+ * - Optimized with gsap.context()
+ */
 
 const services = [
   'Website Development',
@@ -29,14 +42,133 @@ export default function ContactForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  const sectionRef = useRef<HTMLElement>(null);
+  const leftContentRef = useRef<HTMLDivElement>(null);
+  const formContainerRef = useRef<HTMLDivElement>(null);
+  const inputRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    const leftContent = leftContentRef.current;
+    const formContainer = formContainerRef.current;
+
+    if (!section || !leftContent || !formContainer) return;
+
+    const mm = gsap.matchMedia();
+
+    const ctx = gsap.context(() => {
+      // Desktop: Full reveal animations
+      mm.add('(min-width: 1024px)', () => {
+        gsap.fromTo(
+          leftContent.children,
+          { x: -50, opacity: 0 },
+          {
+            x: 0,
+            opacity: 1,
+            duration: 0.8,
+            stagger: 0.15,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: leftContent,
+              start: 'top 80%',
+              toggleActions: 'play none none none',
+            },
+          }
+        );
+
+        gsap.fromTo(
+          formContainer,
+          { x: 50, opacity: 0, scale: 0.95 },
+          {
+            x: 0,
+            opacity: 1,
+            scale: 1,
+            duration: 0.8,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: formContainer,
+              start: 'top 80%',
+              toggleActions: 'play none none none',
+            },
+          }
+        );
+      });
+
+      // Mobile/Tablet: Simple fade-up
+      mm.add('(max-width: 1023px)', () => {
+        gsap.fromTo(
+          leftContent.children,
+          { y: 30, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.6,
+            stagger: 0.1,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: leftContent,
+              start: 'top 85%',
+              toggleActions: 'play none none none',
+            },
+          }
+        );
+
+        gsap.fromTo(
+          formContainer,
+          { y: 30, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.6,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: formContainer,
+              start: 'top 85%',
+              toggleActions: 'play none none none',
+            },
+          }
+        );
+      });
+
+      // Input line-draw effect (all devices)
+      inputRefs.current.forEach((inputWrapper) => {
+        if (!inputWrapper) return;
+        const line = inputWrapper.querySelector('.input-line');
+        if (line) gsap.set(line, { scaleX: 0, transformOrigin: 'left center' });
+      });
+    }, section);
+
+    return () => {
+      mm.revert();
+      ctx.revert();
+    };
+  }, []);
+
+  // Handle input focus animation
+  const handleInputFocus = (index: number) => {
+    const wrapper = inputRefs.current[index];
+    if (!wrapper) return;
+    const line = wrapper.querySelector('.input-line');
+    if (line) {
+      gsap.to(line, { scaleX: 1, duration: 0.4, ease: 'power2.out' });
+    }
+  };
+
+  const handleInputBlur = (index: number) => {
+    const wrapper = inputRefs.current[index];
+    if (!wrapper) return;
+    const line = wrapper.querySelector('.input-line');
+    if (line) {
+      gsap.to(line, { scaleX: 0, duration: 0.3, ease: 'power2.in' });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    // Store in localStorage for admin panel demo
     const submissions = JSON.parse(localStorage.getItem('techwon-submissions') || '[]');
     submissions.push({
       ...formData,
@@ -50,7 +182,6 @@ export default function ContactForm() {
     setIsSubmitted(true);
     toast.success('Your request has been submitted successfully!');
 
-    // Reset form after 3 seconds
     setTimeout(() => {
       setIsSubmitted(false);
       setFormData({ name: '', email: '', service: '', message: '' });
@@ -64,21 +195,20 @@ export default function ContactForm() {
   };
 
   return (
-    <section id="contact" className="section-padding relative overflow-hidden">
+    <section
+      ref={sectionRef}
+      id="contact"
+      className="section-padding relative overflow-hidden"
+    >
       {/* Background */}
       <div className="absolute inset-0 bg-background-secondary" />
-      <div className="absolute bottom-0 left-1/4 w-[600px] h-[400px] bg-primary/5 rounded-full blur-3xl" />
-      <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-accent/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-1/4 w-[600px] h-[400px] bg-primary/5 rounded-full blur-3xl gpu-accelerated" />
+      <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-accent/5 rounded-full blur-3xl gpu-accelerated" />
 
       <div className="container-custom relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
+          <div ref={leftContentRef}>
             <span className="inline-block px-4 py-2 rounded-full glass-card text-sm text-primary font-medium mb-4">
               Get In Touch
             </span>
@@ -86,23 +216,24 @@ export default function ContactForm() {
               Ready to <span className="gradient-text">Transform</span> Your Business?
             </h2>
             <p className="text-foreground-secondary mb-8">
-              Let's discuss how TECHWON can help you achieve your digital goals. Fill out the form and our team will get back to you within 24 hours.
+              Let's discuss how TECHWON can help you achieve your digital goals. Fill out the form
+              and our team will get back to you within 24 hours.
             </p>
 
             {/* Contact Info Cards */}
             <div className="space-y-4">
-              <div className="glass-card p-4 flex items-center gap-4">
+              <div className="glass-card p-4 flex items-center gap-4 gpu-accelerated hover:border-primary/30 transition-colors duration-300">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-primary text-lg">📧</span>
+                  <Mail className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-foreground-muted text-sm">Email Us</p>
                   <p className="font-medium">techwon@gmail.com</p>
                 </div>
               </div>
-              <div className="glass-card p-4 flex items-center gap-4">
+              <div className="glass-card p-4 flex items-center gap-4 gpu-accelerated hover:border-primary/30 transition-colors duration-300">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-primary text-lg">📱</span>
+                  <Phone className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-foreground-muted text-sm">Call Us</p>
@@ -110,16 +241,11 @@ export default function ContactForm() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Form */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="glass-card p-8 neon-border">
+          <div ref={formContainerRef}>
+            <div className="glass-card p-8 neon-border gpu-accelerated">
               {isSubmitted ? (
                 <div className="text-center py-12">
                   <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
@@ -130,7 +256,11 @@ export default function ContactForm() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div>
+                  {/* Name Input */}
+                  <div
+                    ref={(el) => (inputRefs.current[0] = el)}
+                    className="relative"
+                  >
                     <label htmlFor="name" className="block text-sm font-medium mb-2">
                       Your Name
                     </label>
@@ -140,13 +270,20 @@ export default function ContactForm() {
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
+                      onFocus={() => handleInputFocus(0)}
+                      onBlur={() => handleInputBlur(0)}
                       required
-                      className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+                      className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-primary focus:outline-none transition-colors"
                       placeholder="John Doe"
                     />
+                    <div className="input-line absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-accent" />
                   </div>
 
-                  <div>
+                  {/* Email Input */}
+                  <div
+                    ref={(el) => (inputRefs.current[1] = el)}
+                    className="relative"
+                  >
                     <label htmlFor="email" className="block text-sm font-medium mb-2">
                       Email Address
                     </label>
@@ -156,13 +293,20 @@ export default function ContactForm() {
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
+                      onFocus={() => handleInputFocus(1)}
+                      onBlur={() => handleInputBlur(1)}
                       required
-                      className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+                      className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-primary focus:outline-none transition-colors"
                       placeholder="john@example.com"
                     />
+                    <div className="input-line absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-accent" />
                   </div>
 
-                  <div>
+                  {/* Service Select */}
+                  <div
+                    ref={(el) => (inputRefs.current[2] = el)}
+                    className="relative"
+                  >
                     <label htmlFor="service" className="block text-sm font-medium mb-2">
                       Select Service
                     </label>
@@ -171,8 +315,10 @@ export default function ContactForm() {
                       name="service"
                       value={formData.service}
                       onChange={handleChange}
+                      onFocus={() => handleInputFocus(2)}
+                      onBlur={() => handleInputBlur(2)}
                       required
-                      className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+                      className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-primary focus:outline-none transition-colors appearance-none cursor-pointer"
                     >
                       <option value="">Choose a service...</option>
                       {services.map((service) => (
@@ -181,9 +327,14 @@ export default function ContactForm() {
                         </option>
                       ))}
                     </select>
+                    <div className="input-line absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-accent" />
                   </div>
 
-                  <div>
+                  {/* Message Textarea */}
+                  <div
+                    ref={(el) => (inputRefs.current[3] = el)}
+                    className="relative"
+                  >
                     <label htmlFor="message" className="block text-sm font-medium mb-2">
                       Your Message
                     </label>
@@ -192,34 +343,41 @@ export default function ContactForm() {
                       name="message"
                       value={formData.message}
                       onChange={handleChange}
+                      onFocus={() => handleInputFocus(3)}
+                      onBlur={() => handleInputBlur(3)}
                       required
                       rows={4}
-                      className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors resize-none"
+                      className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-primary focus:outline-none transition-colors resize-none"
                       placeholder="Tell us about your project..."
                     />
+                    <div className="input-line absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-accent" />
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4" />
-                        Send Message
-                      </>
-                    )}
-                  </button>
+                  {/* Magnetic Submit Button */}
+                  <MagneticButton className="w-full">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      data-cursor="action"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          Send Message
+                        </>
+                      )}
+                    </button>
+                  </MagneticButton>
                 </form>
               )}
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>
