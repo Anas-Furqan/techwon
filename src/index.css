@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -209,5 +209,104 @@
       linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
       linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
     background-size: 50px 50px;
+  }
+
+  /* Scroll indicator animation */
+  @keyframes scroll-indicator {
+    0%, 100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    50% {
+      transform: translateY(12px);
+      opacity: 0.3;
+    }
+  }
+
+  .animate-scroll-indicator {
+    animation: scroll-indicator 1.5s ease-in-out infinite;
+  }
+
+  /* Fade in animation */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  /* Magnetic button styles */
+  .magnetic-button {
+    @apply inline-block cursor-pointer;
+    will-change: transform;
+  }
+
+  .magnetic-inner {
+    will-change: transform;
+  }
+
+  .magnetic-link {
+    @apply block;
+  }
+
+  /* Split text styles */
+  .split-text {
+    @apply inline-block;
+  }
+
+  .word-wrapper {
+    perspective: 1000px;
+  }
+
+  /* Smooth scroll body styles */
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+
+  .lenis.lenis-smooth [data-lenis-prevent] {
+    overscroll-behavior: contain;
+  }
+
+  .lenis.lenis-stopped {
+    overflow: hidden;
+  }
+
+  .lenis.lenis-smooth iframe {
+    pointer-events: none;
+  }
+
+  /* GPU acceleration for animated elements */
+  .transform-gpu {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* Flowchart styles */
+  .flowchart-node {
+    transition: filter 0.3s ease;
+  }
+
+  .flowchart-node:hover {
+    filter: brightness(1.2);
+  }
+
+  /* Card stack shadows */
+  .stack-card-shadow {
+    box-shadow: 
+      0 10px 40px -10px rgba(0, 0, 0, 0.3),
+      0 0 60px -20px hsl(199 89% 60% / 0.2);
   }
 }
