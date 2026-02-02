@@ -1,17 +1,17 @@
 import SmoothScrollProvider from '@/components/animations/SmoothScroll';
-import Navbar from '@/components/NavbarNew';
-import Hero from '@/components/HeroNew';
-import Services from '@/components/ServicesNew';
-import HowItWorks from '@/components/HowItWorksNew';
-import WhyChoose from '@/components/WhyChooseNew';
-import Team from '@/components/TeamNew';
-import ContactForm from '@/components/ContactFormNew';
-import Footer from '@/components/FooterNew';
+import Navbar from '@/components/Navbar';
+import Hero from '@/components/Hero';
+import Services from '@/components/Services';
+import HowItWorks from '@/components/HowItWorks';
+import WhyChoose from '@/components/WhyChoose';
+import Team from '@/components/Team';
+import ContactForm from '@/components/ContactForm';
+import Footer from '@/components/Footer';
 
 /**
- * Index Page - Main landing page
- * Optimized: Removed CustomCursor (causes lag on some devices)
- * All sections use gsap.context() for clean memory management
+ * Index Page - Production-Ready Landing Page
+ * All components consolidated and optimized for 60fps
+ * Mobile-first responsive design with gsap.matchMedia()
  */
 
 const Index = () => {
