@@ -57,20 +57,19 @@ export default function HowItWorks() {
 
     if (!section || !header || !stickyContainer) return;
 
-    // Check for mobile
     const isMobile = window.matchMedia('(max-width: 1024px)').matches;
 
     const ctx = gsap.context(() => {
       // Header animation
       gsap.fromTo(
         header.children,
-        { yPercent: 50, opacity: 0 },
+        { y: 40, opacity: 0 },
         {
-          yPercent: 0,
+          y: 0,
           opacity: 1,
-          duration: 1,
-          stagger: 0.15,
-          ease: 'power4.out',
+          duration: 0.8,
+          stagger: 0.12,
+          ease: 'power3.out',
           scrollTrigger: {
             trigger: header,
             start: 'top 85%',
@@ -80,16 +79,36 @@ export default function HowItWorks() {
       );
 
       if (!isMobile) {
-        // Desktop: Sticky scroll implementation
-        const totalHeight = cards.length * 100; // vh units
+        // Desktop: Sticky scroll - SINGLE ScrollTrigger for all cards
+        const totalHeight = cards.length * 80; // Reduced height for smoother experience
         
-        // Pin the sticky container
+        // Set initial states
+        cards.forEach((card, index) => {
+          if (!card) return;
+          gsap.set(card, {
+            scale: index === 0 ? 1 : 0.85,
+            opacity: index === 0 ? 1 : 0.3,
+            y: index === 0 ? 0 : 30,
+          });
+        });
+
+        // Initialize SVG line
+        if (progressLine) {
+          const lineLength = progressLine.getTotalLength();
+          gsap.set(progressLine, {
+            strokeDasharray: lineLength,
+            strokeDashoffset: lineLength,
+          });
+        }
+
+        // SINGLE ScrollTrigger handles everything
         ScrollTrigger.create({
           trigger: stickyContainer,
           start: 'top 15%',
           end: `+=${totalHeight}vh`,
           pin: true,
           pinSpacing: true,
+          scrub: 1.5,
           onUpdate: (self) => {
             const progress = self.progress;
             const currentStep = Math.min(
@@ -102,98 +121,70 @@ export default function HowItWorks() {
             if (progressLine) {
               const lineLength = progressLine.getTotalLength();
               gsap.set(progressLine, {
-                strokeDasharray: lineLength,
                 strokeDashoffset: lineLength * (1 - progress),
               });
             }
+
+            // Animate all cards based on progress
+            cards.forEach((card, index) => {
+              if (!card) return;
+              
+              const cardStart = index / cards.length;
+              const cardEnd = (index + 1) / cards.length;
+              const isActive = progress >= cardStart && progress < cardEnd;
+              const isPast = progress >= cardEnd;
+              
+              if (isActive) {
+                gsap.set(card, { scale: 1, opacity: 1, y: 0 });
+              } else if (isPast) {
+                gsap.set(card, { scale: 0.92, opacity: 0.5, y: -20 });
+              } else {
+                gsap.set(card, { scale: 0.85, opacity: 0.3, y: 30 });
+              }
+            });
           },
         });
-
-        // Animate cards based on scroll
-        cards.forEach((card, index) => {
-          if (!card) return;
-
-          const startProgress = index / cards.length;
-          const endProgress = (index + 1) / cards.length;
-
-          ScrollTrigger.create({
-            trigger: stickyContainer,
-            start: 'top 15%',
-            end: `+=${totalHeight}vh`,
-            onUpdate: (self) => {
-              const progress = self.progress;
-              
-              if (progress >= startProgress && progress < endProgress) {
-                // Active card
-                gsap.to(card, {
-                  scale: 1,
-                  opacity: 1,
-                  yPercent: 0,
-                  filter: 'blur(0px)',
-                  duration: 0.5,
-                  ease: 'power2.out',
-                });
-              } else if (progress < startProgress) {
-                // Future card
-                gsap.to(card, {
-                  scale: 0.85,
-                  opacity: 0.3,
-                  yPercent: 30,
-                  filter: 'blur(3px)',
-                  duration: 0.5,
-                  ease: 'power2.out',
-                });
-              } else {
-                // Past card
-                gsap.to(card, {
-                  scale: 0.9,
-                  opacity: 0.5,
-                  yPercent: -20,
-                  filter: 'blur(2px)',
-                  duration: 0.5,
-                  ease: 'power2.out',
-                });
-              }
-            },
-          });
-        });
       } else {
-        // Mobile: Standard reveal animation
-        cards.forEach((card, index) => {
-          if (!card) return;
-
-          gsap.fromTo(
-            card,
-            { yPercent: 30, opacity: 0 },
-            {
-              yPercent: 0,
-              opacity: 1,
-              duration: 0.8,
-              ease: 'power4.out',
-              scrollTrigger: {
-                trigger: card,
-                start: 'top 85%',
-                toggleActions: 'play none none none',
-              },
-            }
-          );
-        });
+        // Mobile: Simple staggered reveal
+        gsap.fromTo(
+          cards,
+          { y: 40, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.6,
+            stagger: 0.15,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: stickyContainer,
+              start: 'top 80%',
+              toggleActions: 'play none none none',
+            },
+          }
+        );
       }
 
-      // Card hover effects (both mobile and desktop)
+      // Card hover effects
       cards.forEach((card) => {
         if (!card) return;
-
-        const hoverTl = gsap.timeline({ paused: true });
-        hoverTl.to(card, {
-          yPercent: -3,
-          boxShadow: '0 0 60px hsl(199 89% 60% / 0.3)',
-          duration: 0.3,
-          ease: 'power2.out',
+        
+        card.addEventListener('mouseenter', () => {
+          gsap.to(card, {
+            y: -5,
+            boxShadow: '0 0 40px hsl(199 89% 60% / 0.25)',
+            duration: 0.25,
+            ease: 'power2.out',
+          });
         });
 
-        card.addEventListener('mouseenter', () => hoverTl.play());
-        card.addEventListener('mouseleave', () => hoverTl.reverse());
+        card.addEventListener('mouseleave', () => {
+          gsap.to(card, {
+            y: 0,
+            boxShadow: '0 4px 30px rgba(0, 0, 0, 0.3)',
+            duration: 0.25,
+            ease: 'power2.out',
+          });
+        });
       });
     }, section);
 

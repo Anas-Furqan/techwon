@@ -1,6 +1,10 @@
-import { useRef, useEffect, useState } from 'react';
-import gsap from 'gsap';
+import { useRef, useEffect, useState, useCallback } from 'react';
 
+/**
+ * TextScramble - Premium AI-style text reveal effect
+ * Uses requestAnimationFrame for smooth 60fps animation
+ * Memory-optimized with proper cleanup
+ */
 interface TextScrambleProps {
   text: string;
   className?: string;
@@ -9,90 +13,74 @@ interface TextScrambleProps {
   onComplete?: () => void;
 }
 
-const chars = '!<>-_\\/[]{}—=+*^?#________ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+// Reduced character set for cleaner look
+const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 export default function TextScramble({
   text,
   className = '',
-  scrambleSpeed = 30,
+  scrambleSpeed = 50,
   revealDelay = 0,
   onComplete,
 }: TextScrambleProps) {
-  const [displayText, setDisplayText] = useState('');
-  const [isComplete, setIsComplete] = useState(false);
-  const frameRef = useRef(0);
-  const resolveRef = useRef<((value: unknown) => void) | null>(null);
+  const [displayText, setDisplayText] = useState(text);
+  const frameRef = useRef<number>(0);
+  const isMountedRef = useRef(true);
+
+  const randomChar = useCallback(() => chars[Math.floor(Math.random() * chars.length)], []);
 
   useEffect(() => {
+    isMountedRef.current = true;
+    
     const timeout = setTimeout(() => {
-      scramble(text);
+      if (!isMountedRef.current) return;
+      
+      const length = text.length;
+      const duration = length * scrambleSpeed;
+      const startTime = performance.now();
+      
+      const animate = (currentTime: number) => {
+        if (!isMountedRef.current) return;
+        
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const revealedCount = Math.floor(progress * length);
+        
+        let result = '';
+        for (let i = 0; i < length; i++) {
+          if (i < revealedCount) {
+            result += text[i];
+          } else if (text[i] === ' ') {
+            result += ' ';
+          } else {
+            result += randomChar();
+          }
+        }
+        
+        setDisplayText(result);
+        
+        if (progress < 1) {
+          frameRef.current = requestAnimationFrame(animate);
+        } else {
+          setDisplayText(text);
+          onComplete?.();
+        }
+      };
+      
+      frameRef.current = requestAnimationFrame(animate);
     }, revealDelay);
 
     return () => {
+      isMountedRef.current = false;
       clearTimeout(timeout);
       cancelAnimationFrame(frameRef.current);
     };
-  }, [text, revealDelay]);
-
-  const scramble = (newText: string) => {
-    const length = newText.length;
-    const queue: { from: string; to: string; start: number; end: number; char?: string }[] = [];
-    
-    // Build queue of character transitions
-    for (let i = 0; i < length; i++) {
-      const from = displayText[i] || '';
-      const to = newText[i];
-      const start = Math.floor(Math.random() * 40);
-      const end = start + Math.floor(Math.random() * 40);
-      queue.push({ from, to, start, end });
-    }
-
-    let frame = 0;
-    
-    const update = () => {
-      let output = '';
-      let complete = 0;
-
-      for (let i = 0; i < queue.length; i++) {
-        const { from, to, start, end } = queue[i];
-        let { char } = queue[i];
-
-        if (frame >= end) {
-          complete++;
-          output += to;
-        } else if (frame >= start) {
-          if (!char || Math.random() < 0.28) {
-            char = randomChar();
-            queue[i].char = char;
-          }
-          output += `<span class="text-primary/60">${char}</span>`;
-        } else {
-          output += from;
-        }
-      }
-
-      setDisplayText(output);
-
-      if (complete === queue.length) {
-        setIsComplete(true);
-        onComplete?.();
-        if (resolveRef.current) resolveRef.current(null);
-      } else {
-        frameRef.current = requestAnimationFrame(update);
-        frame++;
-      }
-    };
-
-    update();
-  };
-
-  const randomChar = () => chars[Math.floor(Math.random() * chars.length)];
+  }, [text, revealDelay, scrambleSpeed, randomChar, onComplete]);
 
   return (
-    <span
-      className={`text-scramble ${className}`}
-      dangerouslySetInnerHTML={{ __html: displayText || text.replace(/./g, ' ') }}
-    />
+    <span className={`text-scramble gpu-accelerated ${className}`}>
+      {displayText}
+    </span>
   );
 }
 
@@ -155,44 +143,9 @@ interface GlitchTextProps {
   intensity?: number;
 }
 
-export function GlitchText({ text, className = '', intensity = 1 }: GlitchTextProps) {
-  const textRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    const element = textRef.current;
-    if (!element) return;
-
-    // Create glitch effect with GSAP
-    const tl = gsap.timeline({ repeat: -1, repeatDelay: 3 });
-
-    tl.to(element, {
-      skewX: 5 * intensity,
-      duration: 0.1,
-      ease: 'power2.inOut',
-    })
-      .to(element, {
-        skewX: -3 * intensity,
-        duration: 0.1,
-        ease: 'power2.inOut',
-      })
-      .to(element, {
-        skewX: 2 * intensity,
-        duration: 0.1,
-        ease: 'power2.inOut',
-      })
-      .to(element, {
-        skewX: 0,
-        duration: 0.1,
-        ease: 'power2.inOut',
-      });
-
-    return () => {
-      tl.kill();
-    };
-  }, [intensity]);
-
+export function GlitchText({ text, className = '' }: GlitchTextProps) {
   return (
-    <span ref={textRef} className={`glitch-text relative ${className}`} data-text={text}>
+    <span className={`glitch-text relative ${className}`} data-text={text}>
       {text}
     </span>
   );

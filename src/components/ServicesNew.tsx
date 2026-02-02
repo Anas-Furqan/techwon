@@ -16,6 +16,12 @@ import MagneticButton from './animations/MagneticButton';
 
 gsap.registerPlugin(ScrollTrigger);
 
+/**
+ * Services Section - Optimized sticky stack cards
+ * Performance: Single ScrollTrigger with onUpdate instead of per-card triggers
+ * Uses gsap.context() for clean memory management
+ */
+
 // Service data with flowcharts
 const services = [
   {
@@ -207,13 +213,13 @@ export default function Services() {
       // Header animation
       gsap.fromTo(
         header.children,
-        { y: 50, opacity: 0 },
+        { y: 40, opacity: 0 },
         {
           y: 0,
           opacity: 1,
           duration: 0.8,
           stagger: 0.1,
-          ease: 'power4.out',
+          ease: 'power3.out',
           scrollTrigger: {
             trigger: header,
             start: 'top 85%',
@@ -222,12 +228,24 @@ export default function Services() {
         }
       );
 
-      // Sticky stack card animation
+      // Sticky stack card animation - SINGLE ScrollTrigger for performance
       const cardHeight = 280;
       const cardGap = 20;
-      const totalScrollHeight = cards.length * (cardHeight + cardGap) * 1.5;
+      const totalScrollHeight = cards.length * (cardHeight + cardGap);
 
-      // Set up sticky container
+      // Set initial states for all cards
+      cards.forEach((card, index) => {
+        const isEven = index % 2 === 0;
+        gsap.set(card, {
+          y: index * 25,
+          scale: 1 - index * 0.015,
+          zIndex: cards.length - index,
+          rotateY: isEven ? -2 : 2,
+          transformPerspective: 1000,
+        });
+      });
+
+      // SINGLE ScrollTrigger that handles all cards via onUpdate
       ScrollTrigger.create({
         trigger: cardsContainer,
         start: 'top 15%',
@@ -235,67 +253,36 @@ export default function Services() {
         pin: true,
         pinSpacing: true,
         anticipatePin: 1,
-      });
-
-      // Animate each card
-      cards.forEach((card, index) => {
-        const isEven = index % 2 === 0;
-        
-        // Initial state - cards stacked from different directions
-        gsap.set(card, {
-          y: index * 30,
-          scale: 1 - index * 0.02,
-          zIndex: cards.length - index,
-          rotateY: isEven ? -3 : 3,
-          transformPerspective: 1000,
-        });
-
-        // Create scroll-triggered animation for each card
-        const startPercent = (index / cards.length) * 100;
-        const endPercent = ((index + 1) / cards.length) * 100;
-
-        ScrollTrigger.create({
-          trigger: cardsContainer,
-          start: 'top 15%',
-          end: `+=${totalScrollHeight}`,
-          scrub: 0.5,
-          onUpdate: (self) => {
-            const progress = self.progress * 100;
+        scrub: 1.5, // Balanced scrub value
+        onUpdate: (self) => {
+          const progress = self.progress;
+          
+          cards.forEach((card, index) => {
+            if (!card) return;
+            const isEven = index % 2 === 0;
+            const cardProgress = Math.max(0, Math.min(1, (progress * cards.length) - index));
             
-            if (progress >= startPercent && progress <= endPercent) {
-              const localProgress = (progress - startPercent) / (endPercent - startPercent);
-              
-              gsap.to(card, {
-                y: gsap.utils.interpolate(index * 30, -50 - index * 100, localProgress),
-                scale: gsap.utils.interpolate(1 - index * 0.02, 0.9, localProgress),
-                opacity: gsap.utils.interpolate(1, index === 0 ? 0.3 : 0.5, localProgress),
-                rotateY: gsap.utils.interpolate(isEven ? -3 : 3, 0, localProgress),
-                duration: 0.1,
-                overwrite: true,
-              });
-            } else if (progress < startPercent) {
-              gsap.to(card, {
-                y: index * 30,
-                scale: 1 - index * 0.02,
-                opacity: 1,
-                rotateY: isEven ? -3 : 3,
-                duration: 0.3,
-                overwrite: true,
-              });
-            }
-          },
-        });
+            // Smooth interpolation
+            const y = gsap.utils.interpolate(index * 25, -80 - index * 60, cardProgress);
+            const scale = gsap.utils.interpolate(1 - index * 0.015, 0.92, cardProgress);
+            const opacity = gsap.utils.interpolate(1, index === 0 ? 0.4 : 0.6, cardProgress);
+            const rotateY = gsap.utils.interpolate(isEven ? -2 : 2, 0, cardProgress);
+            
+            // Use set for immediate update (smoother than tween during scrub)
+            gsap.set(card, { y, scale, opacity, rotateY });
+          });
+        },
       });
 
-      // Card hover effects
+      // Card hover effects - no ScrollTrigger
       cards.forEach((card) => {
         if (!card) return;
 
         const hoverTl = gsap.timeline({ paused: true });
         hoverTl.to(card, {
-          scale: 1.02,
-          boxShadow: '0 0 60px hsl(199 89% 60% / 0.3)',
-          duration: 0.3,
+          scale: '+=0.02', // Relative scale increase
+          boxShadow: '0 0 50px hsl(199 89% 60% / 0.25)',
+          duration: 0.25,
           ease: 'power2.out',
         });
 

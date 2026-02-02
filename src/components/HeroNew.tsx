@@ -4,9 +4,14 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import FloatingRobot from './3d/FloatingRobot';
 import MagneticButton from './animations/MagneticButton';
-import TextScramble from './animations/TextEffects';
 
 gsap.registerPlugin(ScrollTrigger);
+
+/**
+ * Hero Section - Optimized with clean GSAP split-text animation
+ * Fixed: Removed TextScramble component that caused visual bugs
+ * Performance: GPU-accelerated transforms, single context cleanup
+ */
 
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -17,7 +22,6 @@ export default function Hero() {
   const statsRef = useRef<HTMLDivElement>(null);
   const scrollIndicatorRef = useRef<HTMLDivElement>(null);
   const parallaxContainerRef = useRef<HTMLDivElement>(null);
-  const [showScramble, setShowScramble] = useState(false);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -40,15 +44,15 @@ export default function Hero() {
         opacity: 0,
       });
 
-      // Split text animation for title
-      const titleText = title.innerHTML;
+      // Split text animation for title - clean word-by-word reveal
+      const titleText = title.textContent || '';
       const words = titleText.split(' ');
       title.innerHTML = words
         .map((word) => {
           if (word.includes('TECHWON')) {
-            return `<span class="word-wrapper inline-block overflow-hidden"><span class="word inline-block gradient-text">${word}</span></span>`;
+            return `<span class="word-wrapper inline-block overflow-hidden"><span class="word inline-block gradient-text gpu-accelerated">${word}</span></span>`;
           }
-          return `<span class="word-wrapper inline-block overflow-hidden"><span class="word inline-block">${word}</span></span>`;
+          return `<span class="word-wrapper inline-block overflow-hidden"><span class="word inline-block gpu-accelerated">${word}</span></span>`;
         })
         .join(' ');
 
@@ -57,15 +61,14 @@ export default function Hero() {
       // Create master timeline
       const masterTl = gsap.timeline({
         delay: 0.3,
-        defaults: { ease: 'power4.out' },
-        onComplete: () => setShowScramble(true),
+        defaults: { ease: 'power3.out' },
       });
 
-      // Tagline animation with scramble effect
+      // Tagline fade in (no scramble - cleaner)
       masterTl.fromTo(
         tagline,
-        { y: 30, opacity: 0, scale: 0.9 },
-        { y: 0, opacity: 1, scale: 1, duration: 0.8 }
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.6 }
       );
 
       // Title split-text reveal
@@ -77,112 +80,111 @@ export default function Hero() {
         {
           yPercent: 0,
           rotateX: 0,
-          duration: 1.2,
-          stagger: 0.1,
-          ease: 'power4.out',
+          duration: 1,
+          stagger: 0.08,
+          ease: 'power3.out',
         },
-        '-=0.4'
+        '-=0.3'
       );
 
-      // Description reveal with blur
+      // Description reveal
       masterTl.fromTo(
         description,
-        { yPercent: 40, opacity: 0, filter: 'blur(20px)' },
-        { yPercent: 0, opacity: 1, filter: 'blur(0px)', duration: 1 },
-        '-=0.8'
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8 },
+        '-=0.6'
       );
 
       // CTA buttons stagger entrance
       masterTl.fromTo(
         cta.children,
-        { yPercent: 50, opacity: 0, scale: 0.9 },
-        { yPercent: 0, opacity: 1, scale: 1, duration: 0.7, stagger: 0.15 },
-        '-=0.6'
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.6, stagger: 0.12 },
+        '-=0.5'
       );
       gsap.set(cta, { opacity: 1 });
 
-      // Stats reveal with 3D flip
+      // Stats reveal
       const statCards = stats.querySelectorAll('.stat-card');
       gsap.set(stats, { opacity: 1 });
       masterTl.fromTo(
         statCards,
-        { yPercent: 80, opacity: 0, rotateY: -30, scale: 0.8 },
+        { y: 40, opacity: 0 },
         { 
-          yPercent: 0, 
+          y: 0, 
           opacity: 1, 
-          rotateY: 0, 
-          scale: 1, 
-          duration: 0.8, 
-          stagger: 0.12,
-          ease: 'back.out(1.7)',
+          duration: 0.6, 
+          stagger: 0.1,
+          ease: 'power3.out',
         },
-        '-=0.4'
+        '-=0.3'
       );
 
       // Scroll indicator
       masterTl.fromTo(
         scrollIndicator,
-        { opacity: 0, yPercent: 20 },
-        { opacity: 1, yPercent: 0, duration: 0.6 },
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.4 },
         '-=0.2'
       );
 
-      // Mouse parallax effect (desktop only)
+      // Mouse parallax effect (desktop only) - throttled for performance
       if (!isMobile && parallaxContainer) {
         const parallaxElements = parallaxContainer.querySelectorAll('.parallax-layer');
+        let rafId: number;
         
         const handleMouseMove = (e: MouseEvent) => {
-          const { clientX, clientY } = e;
-          const centerX = window.innerWidth / 2;
-          const centerY = window.innerHeight / 2;
-          
-          const moveX = (clientX - centerX) / centerX;
-          const moveY = (clientY - centerY) / centerY;
+          cancelAnimationFrame(rafId);
+          rafId = requestAnimationFrame(() => {
+            const { clientX, clientY } = e;
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            
+            const moveX = (clientX - centerX) / centerX;
+            const moveY = (clientY - centerY) / centerY;
 
-          parallaxElements.forEach((el, index) => {
-            const depth = (index + 1) * 15;
-            gsap.to(el, {
-              xPercent: moveX * depth,
-              yPercent: moveY * depth,
-              duration: 1,
-              ease: 'power2.out',
+            parallaxElements.forEach((el, index) => {
+              const depth = (index + 1) * 10;
+              gsap.to(el, {
+                xPercent: moveX * depth,
+                yPercent: moveY * depth,
+                duration: 0.8,
+                ease: 'power2.out',
+              });
             });
           });
         };
 
-        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mousemove', handleMouseMove, { passive: true });
         
         // Store cleanup function
         (section as any)._parallaxCleanup = () => {
+          cancelAnimationFrame(rafId);
           window.removeEventListener('mousemove', handleMouseMove);
         };
       }
 
-      // Scroll-linked parallax using yPercent for smoothness
+      // Scroll-linked parallax - balanced scrub value
       gsap.to('.hero-bg-element', {
-        yPercent: (i) => (i + 1) * 20,
+        yPercent: (i) => (i + 1) * 15,
         ease: 'none',
         scrollTrigger: {
           trigger: section,
           start: 'top top',
           end: 'bottom top',
-          scrub: 1.5,
+          scrub: 1.5, // Balanced scrub for smooth scrolling
         },
       });
 
-      // Scale down hero on scroll for cinematic exit
-      ScrollTrigger.create({
-        trigger: section,
-        start: 'top top',
-        end: 'bottom top',
-        scrub: 1,
-        onUpdate: (self) => {
-          const progress = self.progress;
-          gsap.set(section, {
-            opacity: 1 - progress * 0.7,
-            scale: 1 - progress * 0.08,
-            filter: `blur(${progress * 5}px)`,
-          });
+      // Simplified exit animation (removed per-frame onUpdate for performance)
+      gsap.to(section, {
+        opacity: 0.3,
+        scale: 0.95,
+        scrollTrigger: {
+          trigger: section,
+          start: 'center top',
+          end: 'bottom top',
+          scrub: 1,
         },
       });
     }, section);
@@ -226,15 +228,11 @@ export default function Hero() {
       {/* Content */}
       <div className="relative z-10 container-custom px-4 pt-24 pb-12">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Tagline with AI scramble effect */}
+          {/* Tagline - clean text, no scramble effect */}
           <div ref={taglineRef} className="mb-6">
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card text-sm text-primary font-medium">
               <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-              {showScramble ? (
-                <TextScramble text="AI-First Digital Agency" scrambleSpeed={25} />
-              ) : (
-                'AI-First Digital Agency'
-              )}
+              AI-First Digital Agency
             </span>
           </div>
 

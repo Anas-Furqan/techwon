@@ -1,9 +1,18 @@
-import { useEffect, useRef, createContext, useContext, ReactNode } from 'react';
+import { useEffect, useRef, createContext, useContext, ReactNode, useState } from 'react';
 import Lenis from 'lenis';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
+
+/**
+ * SmoothScrollProvider - Optimized Lenis + GSAP ScrollTrigger integration
+ * Features:
+ * - ScrollTrigger proxy for perfect sync
+ * - Debounced resize handling
+ * - Mobile-optimized settings
+ * - Memory-safe cleanup
+ */
 
 interface SmoothScrollContextType {
   lenis: Lenis | null;
@@ -18,56 +27,73 @@ interface SmoothScrollProviderProps {
 }
 
 export default function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
-  const lenisRef = useRef<Lenis | null>(null);
+  const [lenis, setLenis] = useState<Lenis | null>(null);
+  const rafIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // Initialize Lenis with premium settings
-    const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Exponential easing
+    // Check for reduced motion preference
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+
+    // Initialize Lenis with optimized settings
+    const lenisInstance = new Lenis({
+      duration: isMobile ? 0.8 : 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: 'vertical',
       gestureOrientation: 'vertical',
-      smoothWheel: true,
-      wheelMultiplier: 1,
-      touchMultiplier: 2,
+      smoothWheel: !prefersReducedMotion,
+      wheelMultiplier: isMobile ? 0.8 : 1,
+      touchMultiplier: 1.5,
       infinite: false,
-      lerp: 0.075, // Premium "heavy" smooth feel (0.05-0.1 range)
+      lerp: isMobile ? 0.1 : 0.08, // Slightly faster for responsiveness
     });
 
-    lenisRef.current = lenis;
+    setLenis(lenisInstance);
 
-    // Connect Lenis to GSAP ScrollTrigger
-    lenis.on('scroll', ScrollTrigger.update);
+    // ScrollTrigger proxy for perfect Lenis sync
+    lenisInstance.on('scroll', ScrollTrigger.update);
 
-    // Add Lenis's requestAnimationFrame to GSAP's ticker
-    gsap.ticker.add((time) => {
-      lenis.raf(time * 1000);
-    });
+    // Optimized RAF loop using gsap.ticker
+    const rafCallback = (time: number) => {
+      lenisInstance.raf(time * 1000);
+    };
+    gsap.ticker.add(rafCallback);
 
-    // Disable GSAP's lag smoothing for the best experience
+    // Disable lag smoothing for smoother animations
     gsap.ticker.lagSmoothing(0);
 
-    // Refresh ScrollTrigger on resize
+    // Debounced resize handler
+    let resizeTimeout: ReturnType<typeof setTimeout>;
     const handleResize = () => {
-      ScrollTrigger.refresh();
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        ScrollTrigger.refresh();
+      }, 200);
     };
+    window.addEventListener('resize', handleResize, { passive: true });
 
-    window.addEventListener('resize', handleResize);
+    // Refresh on visibility change (tab focus)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        ScrollTrigger.refresh();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      // Cleanup
+      // Complete cleanup
       window.removeEventListener('resize', handleResize);
-      gsap.ticker.remove(lenis.raf);
-      lenis.destroy();
-      lenisRef.current = null;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearTimeout(resizeTimeout);
+      gsap.ticker.remove(rafCallback);
+      lenisInstance.destroy();
+      setLenis(null);
     };
   }, []);
 
   return (
-    <SmoothScrollContext.Provider value={{ lenis: lenisRef.current }}>
-      <div data-lenis-smooth>
-        {children}
-      </div>
+    <SmoothScrollContext.Provider value={{ lenis }}>
+      {children}
     </SmoothScrollContext.Provider>
   );
 }

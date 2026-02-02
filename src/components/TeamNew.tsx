@@ -5,6 +5,16 @@ import { Linkedin, Twitter, Github, Sparkles } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
+/**
+ * Team Section - Optimized scroll reveal with clip-path animation
+ * Features:
+ * - Single ScrollTrigger per section (not per card)
+ * - Clip-path reveal for images
+ * - Scale-in animation on scroll
+ * - Lazy loading for images
+ * - GPU-accelerated transforms
+ */
+
 const team = [
   {
     name: 'Alex Chen',
@@ -44,20 +54,19 @@ export default function Team() {
 
     if (!section || !header) return;
 
-    // Check for mobile
     const isMobile = window.matchMedia('(max-width: 768px)').matches;
 
     const ctx = gsap.context(() => {
-      // Header animation
+      // Header animation - single trigger
       gsap.fromTo(
         header.children,
-        { yPercent: 40, opacity: 0 },
+        { y: 40, opacity: 0 },
         {
-          yPercent: 0,
+          y: 0,
           opacity: 1,
-          duration: 1,
-          stagger: 0.12,
-          ease: 'power4.out',
+          duration: 0.8,
+          stagger: 0.1,
+          ease: 'power3.out',
           scrollTrigger: {
             trigger: header,
             start: 'top 85%',
@@ -66,16 +75,14 @@ export default function Team() {
         }
       );
 
-      // Cards with clip-path reveal mask
+      // Cards - SINGLE ScrollTrigger with staggered reveal (clip-path + scale)
       cards.forEach((card, index) => {
         if (!card) return;
-
         const image = card.querySelector('.team-image');
         const content = card.querySelector('.team-content');
-        const techOverlay = card.querySelector('.tech-overlay');
 
-        // Initial states
-        gsap.set(card, { opacity: 0 });
+        // Set initial states
+        gsap.set(card, { opacity: 0, y: 60, scale: 0.9 });
         if (image) {
           gsap.set(image, { 
             clipPath: 'circle(0% at 50% 50%)',
@@ -83,168 +90,98 @@ export default function Team() {
           });
         }
         if (content) {
-          gsap.set(content, { yPercent: 30, opacity: 0 });
+          gsap.set(content, { y: 20, opacity: 0 });
         }
+      });
 
-        // Reveal timeline
-        const revealTl = gsap.timeline({
-          scrollTrigger: {
-            trigger: card,
-            start: 'top 85%',
-            toggleActions: 'play none none none',
-          },
-        });
+      // Single timeline for all cards
+      const cardsTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: section.querySelector('.grid'),
+          start: 'top 85%',
+          toggleActions: 'play none none none',
+        },
+      });
 
-        revealTl
-          .to(card, {
+      cards.forEach((card, index) => {
+        if (!card) return;
+        const image = card.querySelector('.team-image');
+        const content = card.querySelector('.team-content');
+        const staggerOffset = index * 0.15;
+
+        cardsTl.to(
+          card,
+          {
             opacity: 1,
-            duration: 0.3,
-          })
-          .to(
+            y: 0,
+            scale: 1,
+            duration: 0.6,
+            ease: 'power3.out',
+          },
+          staggerOffset
+        );
+
+        if (image) {
+          cardsTl.to(
             image,
             {
               clipPath: 'circle(75% at 50% 50%)',
               scale: 1,
-              duration: 1.2,
-              ease: 'power4.out',
+              duration: 0.8,
+              ease: 'power3.out',
             },
-            '-=0.1'
-          )
-          .to(
+            staggerOffset + 0.1
+          );
+        }
+
+        if (content) {
+          cardsTl.to(
             content,
             {
-              yPercent: 0,
+              y: 0,
               opacity: 1,
-              duration: 0.8,
-              ease: 'power4.out',
-            },
-            '-=0.6'
-          );
-
-        // Tilt effect (desktop only)
-        if (!isMobile) {
-          const handleMouseMove = (e: MouseEvent) => {
-            const rect = card.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            
-            const mouseX = e.clientX - centerX;
-            const mouseY = e.clientY - centerY;
-            
-            const rotateX = (mouseY / (rect.height / 2)) * -10;
-            const rotateY = (mouseX / (rect.width / 2)) * 10;
-
-            gsap.to(card, {
-              rotateX,
-              rotateY,
-              transformPerspective: 1000,
               duration: 0.5,
+              ease: 'power3.out',
+            },
+            staggerOffset + 0.3
+          );
+        }
+      });
+
+      // Hover effects (desktop only) - no ScrollTrigger needed
+      if (!isMobile) {
+        cards.forEach((card) => {
+          if (!card) return;
+          const techOverlay = card.querySelector('.tech-overlay');
+
+          card.addEventListener('mouseenter', () => {
+            gsap.to(card, {
+              scale: 1.03,
+              boxShadow: '0 0 40px hsl(199 89% 60% / 0.2)',
+              duration: 0.3,
               ease: 'power2.out',
             });
-
-            // Subtle image parallax
-            if (image) {
-              gsap.to(image, {
-                xPercent: (mouseX / rect.width) * 5,
-                yPercent: (mouseY / rect.height) * 5,
-                duration: 0.5,
-                ease: 'power2.out',
-              });
-            }
-          };
-
-          const handleMouseLeave = () => {
-            gsap.to(card, {
-              rotateX: 0,
-              rotateY: 0,
-              duration: 0.7,
-              ease: 'elastic.out(1, 0.5)',
-            });
-
-            if (image) {
-              gsap.to(image, {
-                xPercent: 0,
-                yPercent: 0,
-                duration: 0.5,
-                ease: 'power2.out',
-              });
-            }
-          };
-
-          const handleMouseEnter = () => {
-            // Show tech overlay
             if (techOverlay) {
-              gsap.to(techOverlay, {
-                opacity: 1,
-                duration: 0.3,
-              });
+              gsap.to(techOverlay, { opacity: 1, duration: 0.25 });
             }
+          });
 
-            gsap.to(card, {
-              scale: 1.02,
-              boxShadow: '0 0 60px hsl(199 89% 60% / 0.3)',
-              duration: 0.3,
-            });
-          };
-
-          const handleMouseLeaveCard = () => {
-            if (techOverlay) {
-              gsap.to(techOverlay, {
-                opacity: 0,
-                duration: 0.3,
-              });
-            }
-
+          card.addEventListener('mouseleave', () => {
             gsap.to(card, {
               scale: 1,
               boxShadow: '0 4px 30px rgba(0, 0, 0, 0.3)',
               duration: 0.3,
+              ease: 'power2.out',
             });
-          };
-
-          card.addEventListener('mousemove', handleMouseMove);
-          card.addEventListener('mouseleave', handleMouseLeave);
-          card.addEventListener('mouseenter', handleMouseEnter);
-          card.addEventListener('mouseleave', handleMouseLeaveCard);
-
-          // Store cleanup refs
-          (card as any)._cleanup = () => {
-            card.removeEventListener('mousemove', handleMouseMove);
-            card.removeEventListener('mouseleave', handleMouseLeave);
-            card.removeEventListener('mouseenter', handleMouseEnter);
-            card.removeEventListener('mouseleave', handleMouseLeaveCard);
-          };
-        }
-      });
-
-      // Scroll-linked section scaling
-      ScrollTrigger.create({
-        trigger: section,
-        start: 'top bottom',
-        end: 'bottom top',
-        onUpdate: (self) => {
-          const progress = self.progress;
-          // Scale up as entering, scale down as leaving
-          const scale = progress < 0.5 
-            ? 0.95 + progress * 0.1 
-            : 1 - (progress - 0.5) * 0.1;
-          
-          gsap.set(section, {
-            scale: Math.max(0.95, Math.min(1, scale)),
+            if (techOverlay) {
+              gsap.to(techOverlay, { opacity: 0, duration: 0.25 });
+            }
           });
-        },
-      });
+        });
+      }
     }, section);
 
-    return () => {
-      ctx.revert();
-      // Cleanup event listeners
-      cards.forEach((card) => {
-        if ((card as any)?._cleanup) {
-          (card as any)._cleanup();
-        }
-      });
-    };
+    return () => ctx.revert();
   }, []);
 
   return (
@@ -299,13 +236,15 @@ export default function Team() {
                 </div>
               </div>
 
-              {/* Avatar with clip-path reveal */}
+              {/* Avatar with clip-path reveal - LAZY LOADING */}
               <div className="relative w-32 h-32 mx-auto mb-6 overflow-hidden">
                 <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary to-accent opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-lg" />
-                <div className="team-image relative w-full h-full rounded-full bg-gradient-to-br from-primary to-accent p-0.5">
+                <div className="team-image relative w-full h-full rounded-full bg-gradient-to-br from-primary to-accent p-0.5 gpu-accelerated">
                   <img
                     src={member.image}
                     alt={member.name}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full rounded-full object-cover"
                   />
                 </div>

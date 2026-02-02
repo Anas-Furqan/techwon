@@ -83,16 +83,30 @@
   }
 
   html {
-    scroll-behavior: smooth;
+    /* Removed scroll-behavior: smooth - Lenis handles this */
   }
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', sans-serif;
+    /* GPU acceleration for smoother animations */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Space Grotesk', sans-serif;
+  }
+
+  /* Performance: GPU-accelerated animation classes */
+  .gpu-accelerated {
+    will-change: transform;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+  }
+
+  .gpu-auto {
+    will-change: auto;
   }
 }
 

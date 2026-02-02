@@ -5,6 +5,11 @@ import { Brain, Layers, Zap, TrendingUp, Shield, HeadphonesIcon } from 'lucide-r
 
 gsap.registerPlugin(ScrollTrigger);
 
+/**
+ * WhyChoose - Optimized staggered reveal with 3D rotation and glassmorphism glow
+ * Uses single ScrollTrigger per container (not per card) for performance
+ */
+
 const features = [
   {
     icon: Brain,
@@ -57,18 +62,18 @@ export default function WhyChoose() {
 
     if (!section || !leftContent || !rightGrid) return;
 
+    // Use gsap.context for clean memory management
     const ctx = gsap.context(() => {
-      // Left content animation
-      const leftElements = leftContent.children;
+      // Left content animation - single trigger
       gsap.fromTo(
-        leftElements,
+        leftContent.children,
         { x: -60, opacity: 0 },
         {
           x: 0,
           opacity: 1,
           duration: 0.8,
           stagger: 0.15,
-          ease: 'power4.out',
+          ease: 'power3.out',
           scrollTrigger: {
             trigger: leftContent,
             start: 'top 80%',
@@ -77,74 +82,93 @@ export default function WhyChoose() {
         }
       );
 
-      // Feature cards staggered reveal with perspective
-      featureCards.forEach((card, index) => {
-        if (!card) return;
-
-        const row = Math.floor(index / 2);
-        const col = index % 2;
-        const delay = row * 0.15 + col * 0.1;
-
-        gsap.fromTo(
-          card,
-          {
-            y: 60,
-            opacity: 0,
-            rotateX: -15,
-            transformPerspective: 1000,
+      // Feature cards - SINGLE ScrollTrigger with staggered animation
+      // This prevents multiple triggers from causing lag
+      gsap.fromTo(
+        featureCards,
+        {
+          y: 80,
+          opacity: 0,
+          rotateX: -20,
+          rotateY: -10,
+          scale: 0.9,
+        },
+        {
+          y: 0,
+          opacity: 1,
+          rotateX: 0,
+          rotateY: 0,
+          scale: 1,
+          duration: 0.8,
+          stagger: {
+            amount: 0.6, // Total time for all staggers
+            grid: [3, 2], // 3 rows, 2 columns
+            from: 'start',
           },
-          {
-            y: 0,
-            opacity: 1,
-            rotateX: 0,
-            duration: 0.7,
-            delay,
-            ease: 'power4.out',
-            scrollTrigger: {
-              trigger: rightGrid,
-              start: 'top 85%',
-              toggleActions: 'play none none none',
-            },
-          }
-        );
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: rightGrid,
+            start: 'top 85%',
+            toggleActions: 'play none none none',
+          },
+        }
+      );
 
-        // Hover animation
+      // Hover animations - attached directly, no ScrollTrigger needed
+      featureCards.forEach((card) => {
+        if (!card) return;
         const iconWrapper = card.querySelector('.icon-wrapper');
-        const hoverTl = gsap.timeline({ paused: true });
-        
-        hoverTl.to(card, {
-          scale: 1.05,
-          boxShadow: '0 0 40px hsl(199 89% 60% / 0.2)',
-          duration: 0.3,
-          ease: 'power2.out',
-        });
 
-        if (iconWrapper) {
-          hoverTl.to(
-            iconWrapper,
-            {
-              scale: 1.1,
-              rotation: 5,
+        // Hover in
+        card.addEventListener('mouseenter', () => {
+          gsap.to(card, {
+            scale: 1.05,
+            rotateX: 5,
+            rotateY: 5,
+            boxShadow: '0 0 40px hsl(199 89% 60% / 0.25), 0 0 80px hsl(199 89% 60% / 0.1)',
+            duration: 0.3,
+            ease: 'power2.out',
+          });
+          if (iconWrapper) {
+            gsap.to(iconWrapper, {
+              scale: 1.15,
+              rotation: 10,
               duration: 0.3,
               ease: 'power2.out',
-            },
-            0
-          );
-        }
+            });
+          }
+        });
 
-        card.addEventListener('mouseenter', () => hoverTl.play());
-        card.addEventListener('mouseleave', () => hoverTl.reverse());
+        // Hover out
+        card.addEventListener('mouseleave', () => {
+          gsap.to(card, {
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            boxShadow: '0 4px 30px rgba(0, 0, 0, 0.3)',
+            duration: 0.4,
+            ease: 'power2.out',
+          });
+          if (iconWrapper) {
+            gsap.to(iconWrapper, {
+              scale: 1,
+              rotation: 0,
+              duration: 0.3,
+              ease: 'power2.out',
+            });
+          }
+        });
       });
 
-      // Parallax effect on background elements
+      // Single parallax for background elements (not per-element)
       gsap.to('.why-choose-bg', {
-        y: 100,
+        yPercent: 30,
         ease: 'none',
         scrollTrigger: {
           trigger: section,
           start: 'top bottom',
           end: 'bottom top',
-          scrub: 1,
+          scrub: 1.5, // Balanced scrub value
         },
       });
     }, section);
@@ -197,15 +221,15 @@ export default function WhyChoose() {
           </div>
 
           {/* Right Grid */}
-          <div ref={rightGridRef} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div ref={rightGridRef} className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ perspective: '1000px' }}>
             {features.map((feature, index) => (
               <div
                 key={index}
                 ref={(el) => (featureCardsRef.current[index] = el)}
-                className="glass-card-hover p-5 group cursor-pointer"
+                className="glass-card-hover p-5 group cursor-pointer gpu-accelerated"
                 style={{ transformStyle: 'preserve-3d' }}
               >
-                <div className="icon-wrapper w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
+                <div className="icon-wrapper w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors gpu-accelerated">
                   <feature.icon className="w-5 h-5 text-primary" />
                 </div>
                 <h4 className="font-display font-semibold mb-2 text-sm">{feature.title}</h4>
